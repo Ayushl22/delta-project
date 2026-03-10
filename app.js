@@ -17,7 +17,13 @@ const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
 const session = require("express-session");
-const MongoStore = require("connect-mongo");
+let MongoStore = null;
+try {
+  const connectMongo = require("connect-mongo");
+  MongoStore = connectMongo.MongoStore || connectMongo.default;
+} catch (e) {
+  MongoStore = null;
+}
 const flash = require("connect-flash");
 const passport = require("passport");
 const LocalStrategy = require("passport-local");
@@ -52,7 +58,13 @@ const app = express();
 // MongoDB Connection
 // ======================
 
-const dbUrl = process.env.ATLASDB_URL;
+const dbUrl = process.env.ATLASDB_URL || process.env.MONGODB_URI || process.env.MONGO_URI;
+
+if (!dbUrl) {
+  console.error("❌ MongoDB URL not found! Add ATLASDB_URL (or MONGODB_URI) to your .env file.");
+  console.error("   Example: ATLASDB_URL=mongodb://localhost:27017/airbnb");
+  process.exit(1);
+}
 
 main()
   .then(() => {
@@ -86,24 +98,26 @@ app.use(express.static(path.join(__dirname, "public")));
 // Mongo Session Store
 // ======================
 
-const store = MongoStore.create({
-  mongoUrl: dbUrl,
-  crypto: {
-    secret: process.env.SECRET,
-  },
-  touchAfter: 24 * 3600,
-});
-
-store.on("error", function (err) {
-  console.log("SESSION STORE ERROR", err);
-});
+let store = null;
+if (MongoStore && dbUrl) {
+  store = MongoStore.create({
+    mongoUrl: dbUrl,
+    crypto: {
+      secret: process.env.SECRET,
+    },
+    touchAfter: 24 * 3600,
+  });
+  store.on("error", function (err) {
+    console.log("SESSION STORE ERROR", err);
+  });
+}
 
 // ======================
 // Session Configuration
 // ======================
 
 const sessionOptions = {
-  store: store,
+  ...(store && { store }),
   secret: process.env.SECRET,
   resave: false,
   saveUninitialized: true,
@@ -165,11 +179,11 @@ app.use("/listings/:id/reviews", review);
 app.use("/", user);
 
 // ======================
-// Root Route
+// Root Route - redirect to listings
 // ======================
 
 app.get("/", (req, res) => {
-  res.send("Hi I am root");
+  res.redirect("/listings");
 });
 
 // ======================

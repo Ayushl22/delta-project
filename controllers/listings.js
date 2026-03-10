@@ -57,13 +57,12 @@ module.exports.showListing = async (req, res) => {
 // ======================
 
 module.exports.createListing = async (req, res) => {
-    let url=req.file.path;
-    let filename=req.file.filename;
-
     const newListing = new Listing(req.body.listing);
 
     newListing.owner = req.user._id;
-    newListing.image={url,filename};
+    if (req.file) {
+        newListing.image = { url: req.file.path, filename: req.file.filename };
+    }
     
 
     await newListing.save();
@@ -103,7 +102,16 @@ module.exports.updateListing = async (req, res) => {
 
     const { id } = req.params;
 
-    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+    const updateData = { ...req.body.listing };
+
+    // Handle image URL - if provided as string, convert to object format
+    if (typeof updateData.image === "string" && updateData.image.trim()) {
+        updateData.image = { url: updateData.image.trim(), filename: "" };
+    } else {
+        delete updateData.image; // Keep existing image if none provided
+    }
+
+    await Listing.findByIdAndUpdate(id, updateData);
 
     req.flash("success", "Listing updated");
 

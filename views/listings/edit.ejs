@@ -1,8 +1,8 @@
-<% layout("./layouts/boilerplate")%>
+<% layout("./layouts/boilerPlate") %>
 
 <h3>Edit Listing</h3>
 
-<form method="POST" action="/listing/<%= listing._id %>?_method=PUT" novalidate class="needs-validation">
+<form method="POST" action="/listings/<%= listing._id %>?_method=PUT" novalidate class="needs-validation">
 
     <div>
         <label for="title" class="form-label">Title</label>
@@ -39,9 +39,9 @@
             id="image"
             name="listing[image]"
             type="text"
-            value="<%= listing.image %>"
+            value="<%= (listing.image && listing.image.url) ? listing.image.url : '' %>"
             class="form-control"
-            required
+            placeholder="Enter image URL or leave blank to keep current"
         >
     </div>
 
